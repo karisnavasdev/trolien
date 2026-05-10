@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image" href="/logo.png">
+<title>Troll Alien — $TROLIEN</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:ital,wght@0,300;0,400;0,600;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #FFD700;
+    --orange: #FF6B00;
+    --deep-orange: #FF3D00;
+    --cyan: #00F5FF;
+    --blue: #3B7BFF;
+    --purple: #9B30FF;
+    --dark: #03010A;
+    --darker: #010008;
+    --text: #E8E0FF;
+    --glow-gold: 0 0 20px #FFD700, 0 0 40px #FF6B00, 0 0 80px #FF3D00;
+    --glow-cyan: 0 0 20px #00F5FF, 0 0 40px #0080FF;
+    --glow-purple: 0 0 20px #9B30FF, 0 0 60px #6600FF;
+    --glow-blue: 0 0 15px #3B7BFF, 0 0 40px #1a4aff;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--darker);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+  #space-canvas {
+    position: fixed; top:0; left:0;
+    width:100%; height:100%;
+    z-index:0; pointer-events:none;
+  }
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+    opacity:0.25; pointer-events:none; z-index:1;
+  }
+
+  /* NAV */
+  nav {
+    position:fixed; top:0; left:0; right:0; z-index:1000;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 40px;
+    background:linear-gradient(180deg,rgba(3,1,10,0.97) 0%,rgba(3,1,10,0.7) 100%);
+    border-bottom:1px solid rgba(255,215,0,0.12);
+    backdrop-filter:blur(16px);
+  }
+  .nav-brand { display:flex; align-items:center; gap:12px; text-decoration:none; }
+  .nav-icon { width:42px; height:42px; border-radius:50%; object-fit:cover; border:1px solid rgba(255,215,0,0.3); box-shadow:0 0 12px rgba(255,107,0,0.3); }
+  .nav-logo-text {
+    font-family:'Orbitron',sans-serif; font-weight:900; font-size:1rem;
+    letter-spacing:0.15em;
+    background:linear-gradient(135deg,var(--gold),var(--orange));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+  .nav-links { display:flex; gap:28px; list-style:none; }
+  .nav-links a {
+    font-family:'Orbitron',sans-serif; font-size:0.6rem; letter-spacing:0.2em;
+    color:rgba(232,224,255,0.65); text-decoration:none; text-transform:uppercase; transition:all 0.3s;
+    position:relative;
+  }
+  .nav-links a::after { content:''; position:absolute; bottom:-4px; left:0; width:0; height:1px; background:var(--gold); transition:width 0.3s; }
+  .nav-links a:hover { color:var(--gold); }
+  .nav-links a:hover::after { width:100%; }
+  .nav-buy-btn {
+    font-family:'Orbitron',sans-serif; font-size:0.62rem; font-weight:700;
+    letter-spacing:0.2em; text-transform:uppercase; padding:10px 22px;
+    background:linear-gradient(135deg,var(--orange),var(--gold)); color:#000;
+    border:none; cursor:pointer; text-decoration:none;
+    clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+    transition:all 0.3s; box-shadow:0 0 20px rgba(255,107,0,0.4);
+  }
+  .nav-buy-btn:hover { box-shadow:var(--glow-gold); transform:translateY(-2px); }
+
+  /* SCANLINE */
+  .scanline {
+    position:fixed; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg,transparent,rgba(0,245,255,0.25),transparent);
+    animation:scanDown 10s linear infinite;
+    pointer-events:none; z-index:999;
+  }
+
+  /* TOAST */
+  .toast {
+    position:fixed; bottom:36px; left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:rgba(3,1,10,0.97); border:1px solid var(--gold);
+    color:var(--gold); font-family:'Orbitron',sans-serif; font-size:0.6rem;
+    letter-spacing:0.25em; padding:12px 28px; opacity:0;
+    transition:all 0.3s; z-index:9999; pointer-events:none;
+    box-shadow:var(--glow-gold);
+  }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  main { position:relative; z-index:2; }
+
+  /* HERO */
+  .hero {
+    min-height:100vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    text-align:center; padding:110px 40px 80px; position:relative; overflow:hidden;
+  }
+  .hero-eyebrow {
+    font-family:'Orbitron',sans-serif; font-size:0.7rem; font-weight:700;
+    letter-spacing:0.35em; color:var(--gold); text-transform:uppercase;
+    margin-bottom:32px; animation:fadeInDown 0.9s ease both;
+    text-shadow:0 0 20px rgba(255,215,0,0.5);
+  }
+  .mascot-wrap {
+    position:relative; margin-bottom:28px;
+    animation:fadeIn 0.8s ease 0.1s both;
+  }
+  .mascot-ring-outer {
+    position:absolute; inset:-28px; border-radius:50%;
+    border:1px solid rgba(255,215,0,0.15);
+    animation:spinSlow 25s linear infinite;
+  }
+  .mascot-ring-outer::before,.mascot-ring-outer::after {
+    content:''; position:absolute; width:6px; height:6px;
+    background:var(--gold); border-radius:50%;
+    box-shadow:var(--glow-gold);
+  }
+  .mascot-ring-outer::before { top:-3px; left:50%; transform:translateX(-50%); }
+  .mascot-ring-outer::after { bottom:-3px; left:50%; transform:translateX(-50%); }
+  .mascot-ring-inner {
+    position:absolute; inset:-50px; border-radius:50%;
+    border:1px solid rgba(0,245,255,0.08);
+    animation:spinSlow 40s linear infinite reverse;
+  }
+  .mascot-img {
+    width:400px; height:400px; object-fit:contain;
+    filter:drop-shadow(0 0 40px rgba(255,107,0,0.5)) drop-shadow(0 0 80px rgba(255,107,0,0.2));
+    animation:floatBob 7s ease-in-out infinite;
+    position:relative; z-index:1;
+  }
+  .hero-title {
+    font-family:'Orbitron',sans-serif; font-weight:900;
+    font-size:clamp(2.5rem,7vw,5.5rem); line-height:0.9;
+    letter-spacing:-0.02em; margin-bottom:10px;
+    animation:fadeInUp 0.9s ease 0.2s both;
+  }
+  .hero-title .t-Troll {
+    display:block;
+    background:linear-gradient(135deg,#fff 0%,var(--gold) 40%,var(--orange) 70%,var(--deep-orange) 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    filter:drop-shadow(0 0 30px rgba(255,107,0,0.5));
+  }
+  .hero-title .t-doge {
+    display:block;
+    background:linear-gradient(135deg,var(--cyan) 0%,var(--blue) 50%,var(--purple) 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    filter:drop-shadow(0 0 30px rgba(0,245,255,0.4));
+  }
+  .ticker-badge {
+    display:inline-block; font-family:'Space Mono',monospace; font-size:1.1rem;
+    letter-spacing:0.3em; color:var(--gold);
+    border:1px solid rgba(255,215,0,0.35); padding:8px 28px;
+    margin:22px 0 28px;
+    clip-path:polygon(12px 0%,100% 0%,calc(100% - 12px) 100%,0% 100%);
+    background:rgba(255,215,0,0.05); animation:fadeIn 0.9s ease 0.4s both;
+    text-shadow:var(--glow-gold);
+    box-shadow:inset 0 0 20px rgba(255,215,0,0.04),0 0 30px rgba(255,107,0,0.15);
+  }
+
+  /* CONTRACT BTN */
+  .contract-btn {
+    display:inline-flex; align-items:center; gap:10px;
+    font-family:'Space Mono',monospace; font-size:0.7rem; letter-spacing:0.06em; word-break:break-all;
+    color:rgba(232,224,255,0.6); border:1px solid rgba(155,48,255,0.3);
+    padding:12px 20px; background:rgba(155,48,255,0.10); cursor:pointer;
+    transition:all 0.3s; margin-bottom:36px;
+    animation:fadeIn 0.9s ease 0.6s both; border-radius:2px;
+    position:relative; overflow:hidden;
+    max-width:90vw; flex-wrap:wrap; justify-content:center;
+  }
+  .contract-btn::before {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(90deg,transparent,rgba(155,48,255,0.12),transparent);
+    transform:translateX(-100%); transition:transform 0.5s;
+  }
+  .contract-btn:hover::before { transform:translateX(100%); }
+  .contract-btn:hover { border-color:var(--purple); color:var(--text); box-shadow:var(--glow-purple); }
+  .ca-label { font-family:'Orbitron',sans-serif; font-size:0.52rem; letter-spacing:0.15em; color:var(--purple); text-transform:uppercase; white-space:nowrap; flex-shrink:0; }
+
+  /* HERO CTA */
+  .hero-cta { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; animation:fadeInUp 0.9s ease 0.8s both; }
+  .btn-primary {
+    font-family:'Orbitron',sans-serif; font-size:0.68rem; font-weight:700;
+    letter-spacing:0.22em; text-transform:uppercase; padding:16px 38px;
+    background:linear-gradient(135deg,var(--orange),var(--gold)); color:#000;
+    border:none; cursor:pointer; text-decoration:none;
+    clip-path:polygon(12px 0%,100% 0%,calc(100% - 12px) 100%,0% 100%);
+    transition:all 0.3s; box-shadow:0 0 30px rgba(255,107,0,0.45);
+    display:inline-flex; align-items:center; gap:8px;
+  }
+  .btn-primary:hover { box-shadow:var(--glow-gold); transform:translateY(-3px) scale(1.02); }
+  .btn-secondary {
+    font-family:'Orbitron',sans-serif; font-size:0.68rem; font-weight:700;
+    letter-spacing:0.22em; text-transform:uppercase; padding:16px 38px;
+    background:transparent; color:var(--cyan);
+    border:1px solid rgba(0,245,255,0.45); cursor:pointer; text-decoration:none;
+    clip-path:polygon(12px 0%,100% 0%,calc(100% - 12px) 100%,0% 100%);
+    transition:all 0.3s; display:inline-flex; align-items:center; gap:8px;
+  }
+  .btn-secondary:hover { background:rgba(0,245,255,0.07); box-shadow:var(--glow-cyan); transform:translateY(-3px); }
+
+  /* TICKER BAR */
+  .ticker-bar {
+    background:rgba(255,107,0,0.07); overflow:hidden;
+    border-top:1px solid rgba(255,107,0,0.18); border-bottom:1px solid rgba(255,107,0,0.18);
+    padding:11px 0;
+  }
+  .ticker-content { display:flex; animation:tickerScroll 28s linear infinite; white-space:nowrap; }
+  .ticker-item { font-family:'Space Mono',monospace; font-size:0.68rem; letter-spacing:0.2em; color:var(--gold); padding:0 56px; opacity:0.85; text-transform:uppercase; }
+  .ticker-item span { color:var(--orange); }
+
+  /* SECTION BASE */
+  .section { padding:110px 40px; max-width:1200px; margin:0 auto; }
+  .section-label {
+    font-family:'Orbitron',sans-serif; font-size:0.58rem; letter-spacing:0.5em;
+    color:var(--orange); text-transform:uppercase; margin-bottom:14px;
+    display:flex; align-items:center; gap:14px;
+  }
+  .section-label::before { content:''; width:36px; height:1px; background:var(--orange); box-shadow:0 0 8px var(--orange); }
+  .section-title {
+    font-family:'Orbitron',sans-serif; font-weight:900;
+    font-size:clamp(2rem,5vw,3.8rem); line-height:1.05; margin-bottom:40px;
+    background:linear-gradient(135deg,#fff 0%,var(--gold) 55%,var(--orange) 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+
+  /* STORY CARDS */
+  .story-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px; margin-bottom:72px; }
+  .story-card {
+    background:linear-gradient(135deg,rgba(255,107,0,0.12),rgba(155,48,255,0.10));
+    border:1px solid rgba(255,215,0,0.09); padding:44px 36px;
+    position:relative; overflow:hidden; transition:all 0.4s;
+  }
+  .story-card::before {
+    content:''; position:absolute; top:0; left:0; width:3px; height:100%;
+    background:linear-gradient(180deg,var(--gold),var(--orange));
+    box-shadow:0 0 12px rgba(255,107,0,0.4);
+  }
+  .story-card:hover { background:linear-gradient(135deg,rgba(255,107,0,0.08),rgba(155,48,255,0.08)); border-color:rgba(255,215,0,0.22); transform:translateY(-4px); }
+  .story-card-icon { font-size:2.2rem; margin-bottom:18px; display:block; }
+  .story-card h3 { font-family:'Orbitron',sans-serif; font-size:0.8rem; font-weight:700; letter-spacing:0.15em; color:var(--gold); text-transform:uppercase; margin-bottom:14px; }
+  .story-card p { font-size:0.92rem; line-height:1.8; color:rgba(232,224,255,0.68); font-weight:300; }
+
+  /* QUOTE */
+  .quote-block {
+    border:1px solid rgba(255,215,0,0.14);
+    background:radial-gradient(ellipse at center,rgba(255,107,0,0.14) 0%,rgba(20,8,40,0.5) 100%);
+    padding:56px 60px; text-align:center; position:relative; margin:72px 0;
+    clip-path:polygon(20px 0%,100% 0%,calc(100% - 20px) 100%,0% 100%);
+  }
+  .quote-block::before { content:'"'; position:absolute; top:-28px; left:36px; font-size:9rem; font-family:'Orbitron',sans-serif; color:rgba(255,215,0,0.05); line-height:1; }
+  .quote-text { font-family:'Exo 2',sans-serif; font-size:clamp(1.05rem,2.5vw,1.55rem); font-style:italic; font-weight:300; line-height:1.75; color:rgba(232,224,255,0.9); margin-bottom:22px; position:relative; z-index:1; }
+  .quote-text em { color:var(--gold); font-style:normal; font-weight:600; }
+  .quote-attr { font-family:'Space Mono',monospace; font-size:0.62rem; letter-spacing:0.3em; color:rgba(232,224,255,0.28); text-transform:uppercase; }
+
+  /* HOW TO BUY */
+  .how-to-buy {
+    padding:110px 40px;
+    background:linear-gradient(180deg,transparent,rgba(155,48,255,0.04),transparent);
+    border-top:1px solid rgba(155,48,255,0.09); border-bottom:1px solid rgba(155,48,255,0.09);
+  }
+  .how-to-buy .inner { max-width:1200px; margin:0 auto; }
+  .steps-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:2px; margin-top:56px; }
+  .step-card {
+    padding:36px 26px; background:rgba(155,48,255,0.12);
+    border:1px solid rgba(155,48,255,0.1); position:relative; transition:all 0.3s;
+  }
+  .step-card:hover { background:rgba(155,48,255,0.08); border-color:rgba(155,48,255,0.28); transform:translateY(-4px); box-shadow:0 20px 40px rgba(0,0,0,0.3); }
+  .step-number { font-family:'Orbitron',sans-serif; font-size:2.8rem; font-weight:900; color:rgba(155,48,255,0.14); line-height:1; margin-bottom:14px; }
+  .step-title { font-family:'Orbitron',sans-serif; font-size:0.7rem; font-weight:700; letter-spacing:0.15em; color:var(--cyan); text-transform:uppercase; margin-bottom:10px; }
+  .step-desc { font-size:0.88rem; line-height:1.75; color:rgba(232,224,255,0.58); font-weight:300; }
+  .step-link { display:inline-block; margin-top:14px; font-family:'Orbitron',sans-serif; font-size:0.58rem; letter-spacing:0.15em; color:var(--orange); text-decoration:none; text-transform:uppercase; transition:color 0.2s; }
+  .step-link:hover { color:var(--gold); }
+
+  /* MEMES */
+  .memes-section { padding:110px 40px; }
+  .memes-section .inner { max-width:1200px; margin:0 auto; }
+  .memes-grid {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px; margin-top:56px;
+  }
+  .meme-card {
+    position:relative; overflow:hidden; border:1px solid rgba(255,215,0,0.08);
+    background:rgba(255,255,255,0.08); transition:all 0.4s; cursor:pointer;
+    border-radius:2px;
+  }
+  .meme-card:hover { border-color:rgba(255,215,0,0.25); transform:scale(1.02); box-shadow:0 0 30px rgba(255,107,0,0.2),0 0 60px rgba(0,0,0,0.5); z-index:10; }
+  .meme-card img { width:100%; height:auto; display:block; transition:transform 0.4s; }
+  .meme-card:hover img { transform:scale(1.04); }
+  .meme-overlay {
+    position:absolute; bottom:0; left:0; right:0;
+    padding:20px 16px 14px;
+    background:linear-gradient(0deg,rgba(3,1,10,0.85) 0%,transparent 100%);
+    font-family:'Orbitron',sans-serif; font-size:0.58rem; letter-spacing:0.2em;
+    color:var(--gold); text-transform:uppercase; opacity:0; transition:opacity 0.3s;
+  }
+  .meme-card:hover .meme-overlay { opacity:1; }
+
+  /* SOCIALS */
+  .socials-section { padding:110px 40px; text-align:center; }
+  .socials-section .inner { max-width:1000px; margin:0 auto; }
+  .socials-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:56px; }
+  .social-card {
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+    padding:36px 18px; background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.05); text-decoration:none;
+    transition:all 0.3s; position:relative; overflow:hidden;
+    clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+  }
+  .social-card::before { content:''; position:absolute; inset:0; background:radial-gradient(circle at center,var(--card-glow),transparent 70%); opacity:0; transition:opacity 0.3s; }
+  .social-card:hover::before { opacity:1; }
+  .social-card:hover { transform:translateY(-6px); border-color:rgba(255,255,255,0.14); }
+  .social-card[data-type="x"] { --card-glow:rgba(29,161,242,0.1); }
+  .social-card[data-type="community"] { --card-glow:rgba(0,245,255,0.08); }
+  .social-card[data-type="dextools"] { --card-glow:rgba(255,107,0,0.1); }
+  .social-card[data-type="dexscreener"] { --card-glow:rgba(155,48,255,0.1); }
+  .social-icon { width:54px; height:54px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; border:1px solid rgba(255,255,255,0.09); transition:all 0.3s; }
+  .social-card:hover .social-icon { box-shadow:0 0 20px var(--card-glow); border-color:rgba(255,255,255,0.28); transform:scale(1.1); }
+  .social-name { font-family:'Orbitron',sans-serif; font-size:0.65rem; font-weight:700; letter-spacing:0.2em; color:var(--text); text-transform:uppercase; }
+  .social-handle { font-family:'Space Mono',monospace; font-size:0.6rem; color:rgba(232,224,255,0.38); }
+
+  /* FOOTER BANNER */
+  .footer-banner { width:100%; position:relative; overflow:hidden; }
+  .footer-banner img { width:100%; height:auto; display:block; object-fit:cover; }
+  .footer-banner-overlay {
+    position:absolute; inset:0;
+    background:linear-gradient(0deg,rgba(1,0,8,0.85) 0%,rgba(1,0,8,0.1) 50%,rgba(1,0,8,0.6) 100%);
+  }
+  .footer-banner-content {
+    position:absolute; bottom:0; left:0; right:0;
+    padding:40px; text-align:center;
+  }
+
+  /* FOOTER */
+  footer {
+    padding:52px 40px 40px; border-top:1px solid rgba(255,215,0,0.07); text-align:center;
+    background:rgba(1,0,8,0.9);
+  }
+  .footer-logo { font-family:'Orbitron',sans-serif; font-weight:900; font-size:1.7rem; letter-spacing:0.1em; background:linear-gradient(135deg,var(--gold),var(--orange)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:10px; }
+  .footer-ticker { font-family:'Space Mono',monospace; font-size:0.72rem; letter-spacing:0.4em; color:var(--purple); margin-bottom:28px; }
+  .footer-disclaimer { font-size:0.68rem; color:rgba(232,224,255,0.22); max-width:580px; margin:0 auto; line-height:1.85; }
+
+  /* REVEAL */
+  .reveal { opacity:0; transform:translateY(28px); transition:all 0.8s ease; }
+  .reveal.visible { opacity:1; transform:translateY(0); }
+
+  /* ANIMATIONS */
+  @keyframes fadeIn { from{opacity:0}to{opacity:1} }
+  @keyframes fadeInUp { from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeInDown { from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:translateY(0)} }
+  @keyframes floatBob { 0%,100%{transform:translateY(0) rotate(0deg)} 33%{transform:translateY(-14px) rotate(2deg)} 66%{transform:translateY(-7px) rotate(-1.5deg)} }
+  @keyframes spinSlow { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
+  @keyframes tickerScroll { from{transform:translateX(0)}to{transform:translateX(-50%)} }
+  @keyframes scanDown { 0%{top:-2px}100%{top:100%} }
+
+  @media(max-width:900px){
+    nav{padding:12px 18px;} .nav-links{display:none;}
+    .hero{padding:100px 18px 60px;}
+    .story-grid,.steps-grid{grid-template-columns:1fr;}
+    .socials-grid{grid-template-columns:1fr 1fr;}
+    .memes-grid{grid-template-columns:1fr 1fr;}
+    .section,.memes-section,.how-to-buy,.socials-section,.stjude-section{padding:64px 18px;}
+    .quote-block{padding:36px 22px; clip-path:none;}
+    .mascot-img{width:350px;height:350px;}
+    .stjude-card{padding:36px 22px;}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="space-canvas"></canvas>
+<div class="scanline"></div>
+<div class="toast" id="toast">CONTRACT ADDRESS COPIED ✓</div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-brand">
+    <img src="/logo.png" alt="AsterDoge" class="nav-icon">
+    <span class="nav-logo-text">$TROLIEN</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#story">Story</a></li>
+    <li><a href="#how-to-buy">How To Buy</a></li>
+    <li><a href="#memes">Memes</a></li>
+    <li><a href="#socials">Socials</a></li>
+    
+  </ul>
+  <a href="#how-to-buy" class="nav-buy-btn">🚀 How To Buy</a>
+</nav>
+
+<main>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">✦ Destined For The Moon ✦</div>
+
+  <div class="mascot-wrap">
+    <div class="mascot-ring-inner"></div>
+    <div class="mascot-ring-outer"></div>
+    <img src="/main.png" alt="AsterDoge Mascot" class="mascot-img" id="mascot">
+  </div>
+
+  <h1 class="hero-title">
+    <span class="t-Troll">Troll</span>
+    <span style="color: white;">Alien</span>
+  </h1>
+
+  <div class="ticker-badge">$TROLIEN</div>
+
+  <button class="contract-btn" onclick="copyCA()">
+    <span class="ca-label">CA:</span>
+    <span id="ca-display" style="word-break:break-all;min-width:0;flex:1;">ECgweD7xkMj4bm8CcM9rusxKjyQGgdosCvVmhGUupump</span>
+    <span style="opacity:0.5;font-size:0.9rem;flex-shrink:0;">⧉</span>
+  </button>
+
+  <div class="hero-cta">
+    <a href="https://pump.fun/coin/ECgweD7xkMj4bm8CcM9rusxKjyQGgdosCvVmhGUupump" target="_blank" class="btn-primary">🚀 Buy on Pump.fun</a>
+    <a href="#story" class="btn-secondary">☄ Our Story</a>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker-bar">
+  <div class="ticker-content">
+    <span class="ticker-item">☄ $TROLIEN <span>TO THE MOON</span></span>
+    <span class="ticker-item">🐕 THE DOGEFATHER <span>APPROVES ✓</span></span>
+    <span class="ticker-item">🚀 SOLANA · PUMP.FUN <span>LIVE</span></span>
+    <span class="ticker-item">💎 Troll ATH <span>$200M ON SOL</span></span>
+    <span class="ticker-item">🌕 WE ARE ALL <span>ONE STORY</span></span>
+    <span class="ticker-item">🔥 SPACEX MASCOT <span>Troll</span></span>
+    <span class="ticker-item">☄ $TROLIEN <span>TO THE MOON</span></span>
+    <span class="ticker-item">🐕 THE DOGEFATHER <span>APPROVES ✓</span></span>
+    <span class="ticker-item">🚀 SOLANA · PUMP.FUN <span>LIVE</span></span>
+    <span class="ticker-item">💎 Troll ATH <span>$200M ON SOL</span></span>
+    <span class="ticker-item">🌕 WE ARE ALL <span>ONE STORY</span></span>
+    <span class="ticker-item">🔥 SPACEX MASCOT <span>Troll</span></span>
+  </div>
+</div>
+
+<!-- STORY -->
+<section id="story" class="section">
+  <div class="section-label">Origin Story</div>
+  <h2 class="section-title">The Legend<br>Written In The Stars</h2>
+
+  <div class="story-grid reveal">
+    <div class="story-card">
+      <span class="story-card-icon">🐕</span>
+      <h3>The Dogefather Speaks</h3>
+      <p>Elon Musk posted about mysterious troll aliens invading Twitter. Two legends. One destiny. The universe was paying attention.</p>
+    </div>
+    <div class="story-card">
+      <span class="story-card-icon">☄️</span>
+      <h3>Troll Hits 200M ATH</h3>
+      <p>While Troll was shattering records and hitting an almost $200 million all-time high on SOL, something incredible was brewing. The stars aligned for those who dared to look.</p>
+    </div>
+    <div class="story-card">
+      <span class="story-card-icon">💔</span>
+      <h3>For Those Left Behind</h3>
+      <p>We saw you. The ones who missed it. The ones who watched from the sidelines while history was made. Troll Alien was created for every diamond hand who got left behind.</p>
+    </div>
+    <div class="story-card">
+      <span class="story-card-icon">🔀</span>
+      <h3>One Unified Story</h3>
+      <p>Troll + Alien = a collision written in the cosmos. We merged two of the most iconic forces into a single, unstoppable narrative on Solana. This is the chapter you won't miss.</p>
+    </div>
+  </div>
+
+  <div class="quote-block reveal">
+    <p class="quote-text">
+      We created <em>Troll Alien</em> for those left behind —<br>
+      combining <em>Troll</em> and <em>Alien</em> into one story<br>
+      to be <em>remembered forever</em>.
+    </p>
+    <div class="quote-attr">— The Troll Alien Community</div>
+  </div>
+</section>
+
+<!-- HOW TO BUY -->
+<section id="how-to-buy" class="how-to-buy">
+  <div class="inner">
+    <div class="section-label">Mission Brief</div>
+    <h2 class="section-title">How To Buy<br>$TROLIEN</h2>
+    <div class="steps-grid reveal">
+      <div class="step-card">
+        <div class="step-number">01</div>
+        <div class="step-title">Get a Solana Wallet</div>
+        <p class="step-desc">Download Phantom or Solflare. Create your account and securely save your seed phrase.</p>
+        <a href="https://phantom.app" target="_blank" class="step-link">→ Get Phantom</a>
+      </div>
+      <div class="step-card">
+        <div class="step-number">02</div>
+        <div class="step-title">Fund With SOL</div>
+        <p class="step-desc">Buy SOL from Coinbase, Kraken, or Binance and send it to your Phantom wallet address.</p>
+        <a href="https://coinbase.com" target="_blank" class="step-link">→ Buy SOL</a>
+      </div>
+      <div class="step-card">
+        <div class="step-number">03</div>
+        <div class="step-title">Go to Pump.fun</div>
+        <p class="step-desc">Visit pump.fun, search $TROLIEN or paste the contract address, then connect your wallet.</p>
+        <a href="https://pump.fun/coin/ECgweD7xkMj4bm8CcM9rusxKjyQGgdosCvVmhGUupump" target="_blank" class="step-link">→ Go to Pump.fun</a>
+      </div>
+      <div class="step-card">
+        <div class="step-number">04</div>
+        <div class="step-title">Swap & HODL</div>
+        <p class="step-desc">Enter your SOL amount, swap for $TROLIEN and become part of the legend. 🌕</p>
+        <a href="https://x.com/TrollAlienSol" target="_blank" class="step-link">→ Join Community</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MEMES -->
+<section id="memes" class="memes-section">
+  <div class="inner">
+    <div class="section-label">The Fleet</div>
+    <h2 class="section-title">$TROLIEN<br>Meme Gallery</h2>
+    <div class="memes-grid reveal">
+      <div class="meme-card">
+        <img src="/6.png"/>
+        <div class="meme-overlay">Mission Control 🛸</div>
+      </div>
+      <div class="meme-card">
+        <img src="/2.png"/>
+        <div class="meme-overlay">On The Moon 🌕</div>
+      </div>
+      <div class="meme-card">
+        <img src="/3.png"/>
+        <div class="meme-overlay">Moon Mechanic 🔧</div>
+      </div>
+      <div class="meme-card">
+        <img src="/4.png"/>
+        <div class="meme-overlay">Launch Sequence 🚀</div>
+      </div>
+      <div class="meme-card">
+        <img src="/5.png"/>
+        <div class="meme-overlay">Space Cowboy 🤠</div>
+      </div>
+      <div class="meme-card">
+        <img src="/6.png"/>
+        <div class="meme-overlay">Zero Gravity Snacks 🍕</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOCIALS -->
+<section id="socials" class="socials-section">
+  <div class="inner">
+    <div class="section-label" style="justify-content:center;">Connect With The Fleet</div>
+    <h2 class="section-title" style="font-size:clamp(1.8rem,4vw,3rem);">Join The Mission</h2>
+    <p style="color:rgba(232,224,255,0.45);font-weight:300;font-size:0.93rem;">The Troll Alien galaxy is everywhere. Find us, follow us, trade us.</p>
+    <div class="socials-grid reveal">
+      <a href="https://x.com/TrollAlienSol" target="_blank" class="social-card" data-type="x">
+        <div class="social-icon">𝕏</div>
+        <div class="social-name">X / Twitter</div>
+        <div class="social-handle">@TrollAlienSol</div>
+      </a>
+      <!-- <a href="https://t.me/asterwojak" target="_blank" class="social-card" data-type="community">
+        <div class="social-icon">👥</div>
+        <div class="social-name">Telegram Community</div>
+        <div class="social-handle">@asterwojak</div>
+      </a> -->
+      <a href="https://www.dextools.io/app/solana/pair-explorer/ECgweD7xkMj4bm8CcM9rusxKjyQGgdosCvVmhGUupump" target="_blank" class="social-card" data-type="dextools">
+        <div class="social-icon">📊</div>
+        <div class="social-name">DEXTools</div>
+        <div class="social-handle">$TROLIEN Charts</div>
+      </a>
+      <a href="https://dexscreener.com/solana/ECgweD7xkMj4bm8CcM9rusxKjyQGgdosCvVmhGUupump" target="_blank" class="social-card" data-type="dexscreener">
+        <div class="social-icon">🔭</div>
+        <div class="social-name">DexScreener</div>
+        <div class="social-handle">Live Price Data</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER BANNER -->
+<div class="footer-banner">
+  <img src="/1.png" alt="AsterDoge Banner">
+  <div class="footer-banner-overlay"></div>
+  <div class="footer-banner-content">
+    <div style="font-family:'Orbitron',sans-serif;font-weight:900;font-size:clamp(1.4rem,3vw,2.6rem);letter-spacing:0.08em;background:linear-gradient(135deg,#fff,#FFD700,#FF6B00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;">DESTINED FOR THE MOON</div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.75rem;letter-spacing:0.4em;color:rgba(232,224,255,0.5);">$TROLIEN · SOLANA · PUMP.FUN</div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">☄ Troll Alien</div>
+  <div class="footer-ticker">$TROLIEN · SOLANA · PUMP.FUN</div>
+  <p class="footer-disclaimer">$TROLIEN is a community meme token launched on Solana via Pump.fun for entertainment purposes. Not financial advice. Crypto is highly speculative — never invest more than you can afford to lose. Always DYOR. ☄🐕🌕</p>
+</footer>
+
+</main>
+
+<script>
+// SPACE CANVAS
+const canvas = document.getElementById('space-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, stars=[], orbs=[], debris=[];
+
+function resize(){ W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight; }
+
+function initStars(){
+  stars = Array.from({length:320},()=>({
+    x:Math.random()*W, y:Math.random()*H,
+    r:Math.random()*1.4, twinkle:Math.random()*Math.PI*2,
+    speed:Math.random()*0.04+0.01
+  }));
+}
+
+function initOrbs(){
+  const cols=[
+    ['rgba(255,107,0,','rgba(255,61,0,'],
+    ['rgba(0,245,255,','rgba(0,100,200,'],
+    ['rgba(155,48,255,','rgba(80,0,200,'],
+    ['rgba(255,215,0,','rgba(255,140,0,'],
+    ['rgba(59,123,255,','rgba(0,60,200,'],
+    ['rgba(180,100,255,','rgba(100,0,200,'],
+  ];
+  orbs = Array.from({length:9},(_, i)=>{
+    const c=cols[i%cols.length];
+    return { x:Math.random()*W, y:Math.random()*H, r:Math.random()*200+70,
+      vx:(Math.random()-0.5)*0.25, vy:(Math.random()-0.5)*0.2,
+      c1:c[0], c2:c[1], a:Math.random()*0.1+0.03, phase:Math.random()*Math.PI*2 };
+  });
+}
+
+function initDebris(){
+  debris = Array.from({length:20},()=>({
+    x:Math.random()*W, y:Math.random()*H,
+    r:Math.random()*2.2+0.5,
+    vx:(Math.random()-0.5)*0.9, vy:(Math.random()-0.5)*0.9,
+    trail:[], color:Math.random()>0.5?'#FFD700':'#FF6B00'
+  }));
+}
+
+let frame=0;
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // BG
+  const bg=ctx.createRadialGradient(W/2,H*0.4,0,W/2,H*0.5,Math.max(W,H));
+  bg.addColorStop(0,'rgba(8,4,22,1)'); bg.addColorStop(0.6,'rgba(3,1,10,1)'); bg.addColorStop(1,'rgba(1,0,6,1)');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+  // Nebula orbs
+  ctx.save(); ctx.globalCompositeOperation='screen';
+  orbs.forEach((o,i)=>{
+    o.phase+=0.004; o.x+=o.vx+Math.sin(o.phase)*0.12; o.y+=o.vy+Math.cos(o.phase*0.8)*0.1;
+    if(o.x<-o.r)o.x=W+o.r; if(o.x>W+o.r)o.x=-o.r;
+    if(o.y<-o.r)o.y=H+o.r; if(o.y>H+o.r)o.y=-o.r;
+    const p=0.82+Math.sin(frame*0.009+i)*0.18;
+    const g=ctx.createRadialGradient(o.x,o.y,0,o.x,o.y,o.r*p);
+    g.addColorStop(0,o.c1+o.a+')'); g.addColorStop(0.45,o.c2+(o.a*0.35)+')'); g.addColorStop(1,o.c1+'0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(o.x,o.y,o.r*p,0,Math.PI*2); ctx.fill();
+  });
+  ctx.restore();
+
+  // Stars
+  stars.forEach(s=>{
+    s.twinkle+=s.speed;
+    const a=Math.max(0.05,0.3+Math.sin(s.twinkle)*0.55);
+    ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${a})`; ctx.fill();
+  });
+
+  // Debris trails
+  debris.forEach(d=>{
+    d.trail.push({x:d.x,y:d.y}); if(d.trail.length>14)d.trail.shift();
+    d.x+=d.vx; d.y+=d.vy;
+    if(d.x<0)d.x=W; if(d.x>W)d.x=0; if(d.y<0)d.y=H; if(d.y>H)d.y=0;
+    if(d.trail.length>1){
+      ctx.beginPath(); ctx.moveTo(d.trail[0].x,d.trail[0].y);
+      d.trail.forEach(p=>ctx.lineTo(p.x,p.y));
+      ctx.strokeStyle=d.color.replace('#','rgba(').replace('FFD700','255,215,0,0.12)').replace('FF6B00','255,107,0,0.12)');
+      ctx.lineWidth=0.8; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+    ctx.fillStyle=d.color; ctx.shadowBlur=7; ctx.shadowColor=d.color; ctx.fill(); ctx.shadowBlur=0;
+  });
+
+  frame++; requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize',()=>{resize();initStars();initOrbs();});
+resize(); initStars(); initOrbs(); initDebris(); draw();
+
+// COPY CA
+function copyCA(){
+  const ca='ECgweD7xkMj4bm8CcM9rusxKjyQGgdosCvVmhGUupump';
+  try{ navigator.clipboard.writeText(ca); }catch(e){}
+  const t=document.getElementById('toast');
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// SCROLL REVEAL
+const obs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');}),{threshold:0.12});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+// PARALLAX MASCOT
+document.addEventListener('mousemove',e=>{
+  const x=(e.clientX/window.innerWidth-0.5)*18;
+  const y=(e.clientY/window.innerHeight-0.5)*18;
+  document.getElementById('mascot').style.filter=`drop-shadow(0 0 40px rgba(255,107,0,0.5)) drop-shadow(0 0 80px rgba(255,107,0,0.2)) translate(${x*0.25}px,${y*0.25}px)`;
+});
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"376229fa3b2646819ebf465fedb5a28c","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
